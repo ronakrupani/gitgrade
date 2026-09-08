@@ -1,0 +1,61 @@
+/*
+ * Design tokens.
+ *
+ * Every colour in GitGrade comes from this file. Nothing else in the codebase
+ * should contain a hex value. The raw tokens live on :root so they are
+ * readable in devtools, and the @theme inline block below maps them onto
+ * Tailwind's colour scale so `bg-surface` or `text-muted` resolve to them.
+ *
+ * Dark theme only in v1. There is no light mode and no toggle.
+ *
+ * Contrast against --bg, measured rather than eyeballed:
+ *   --text        16.6:1  passes AA and AAA
+ *   --accent       9.8:1  passes AA and AAA
+ *   --text-muted   6.7:1  passes AA
+ * If you change any of these values, recompute the pair before committing.
+ */
+
+:root {
+  /* surfaces, darkest to lightest */
+  --bg: #0a0c10;
+  --surface: #12161c;
+  --surface-raised: #1a1f27;
+  --border: #232a34;
+
+  /* text */
+  --text: #e6edf3;
+  --text-muted: #8b98a9;
+
+  /* accent, the light blue. The only accent in the product. */
+  --accent: #56c2ff;
+  --accent-hover: #7fd1ff;
+  --accent-dim: #1e3a4c;
+
+  /* status. Used only on check rows and the grade badge. */
+  --pass: #3fb950;
+  --fail: #f85149;
+  --na: #6e7681;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-dim: var(--accent-dim);
+
+  --color-pass: var(--pass);
+  --color-fail: var(--fail);
+  --color-na: var(--na);
+
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
