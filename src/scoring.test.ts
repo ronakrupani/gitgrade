@@ -131,3 +131,53 @@ describe("scoreAccount", () => {
     expect(account.grade).toBe("F")
   })
 })
+
+describe("not-applicable checks", () => {
+  it("removes an na check from the denominator", () => {
+    const result = scoreRepo(context(), [
+      stubCheck("a", 10, "pass"),
+      stubCheck("b", 90, "na"),
+    ])
+
+    // 10 of 10, not 10 of 100.
+    expect(result.possible).toBe(10)
+    expect(result.earned).toBe(10)
+    expect(result.score).toBe(100)
+  })
+
+  it("does not treat na as a failure", () => {
+    const withNa = scoreRepo(context(), [
+      stubCheck("a", 50, "pass"),
+      stubCheck("b", 50, "na"),
+    ])
+    const withoutTheCheck = scoreRepo(context(), [stubCheck("a", 50, "pass")])
+
+    expect(withNa.score).toBe(withoutTheCheck.score)
+  })
+
+  it("does not treat na as a pass", () => {
+    const result = scoreRepo(context(), [
+      stubCheck("a", 50, "fail"),
+      stubCheck("b", 50, "na"),
+    ])
+
+    expect(result.score).toBe(0)
+  })
+
+  it("still reports the na outcome so the UI can show it", () => {
+    const result = scoreRepo(context(), [stubCheck("b", 5, "na")])
+
+    expect(result.outcomes).toHaveLength(1)
+    expect(result.outcomes[0].result).toBe("na")
+  })
+
+  it("scores a repo where nothing applies at 100 rather than 0", () => {
+    const result = scoreRepo(context(), [
+      stubCheck("a", 10, "na"),
+      stubCheck("b", 10, "na"),
+    ])
+
+    expect(result.possible).toBe(0)
+    expect(result.score).toBe(100)
+  })
+})

@@ -39,13 +39,22 @@ export function scoreRepo(
     result: check.run(context),
   }))
 
-  const possible = outcomes.reduce((total, o) => total + o.check.weight, 0)
-  const earned = outcomes
+  // A check that does not apply is removed from the denominator entirely.
+  // Counting it as a failure would penalise a Python library for having no
+  // deployed URL; counting it as a pass would inflate the score for a rule
+  // the repo never had to satisfy.
+  const applicable = outcomes.filter((o) => o.result !== "na")
+
+  const possible = applicable.reduce((total, o) => total + o.check.weight, 0)
+  const earned = applicable
     .filter((o) => o.result === "pass")
     .reduce((total, o) => total + o.check.weight, 0)
 
   // Grading on the rounded figure keeps the letter predictable from the
   // number on screen. 89.6 shows as 90 and should not read as a B.
+  // Every check coming back na leaves nothing to fix, so the repo is not
+  // penalised. Unreachable with the real registry, where twelve of the
+  // thirteen checks always apply.
   const score = possible === 0 ? 100 : Math.round((earned / possible) * 100)
 
   return {
