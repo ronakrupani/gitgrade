@@ -1,1 +1,30 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+   * Scores and other machine-emitted numbers render in a monospace with
+   * tabular figures so digits do not jitter as values update.
+   */
+  .tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Every interactive element keeps a visible focus ring. Do not remove. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
