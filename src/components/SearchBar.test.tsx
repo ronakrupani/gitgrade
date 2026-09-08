@@ -13,6 +13,18 @@ describe("SearchBar", () => {
     expect(onSearch).toHaveBeenCalledWith("octocat")
   })
 
+  it("submits when Enter is pressed in the input", async () => {
+    const onSearch = vi.fn()
+    render(<SearchBar onSearch={onSearch} />)
+
+    await userEvent.type(
+      screen.getByLabelText("GitHub username"),
+      "octocat{enter}",
+    )
+
+    expect(onSearch).toHaveBeenCalledWith("octocat")
+  })
+
   it("does not submit an empty username", async () => {
     const onSearch = vi.fn()
     render(<SearchBar onSearch={onSearch} />)
