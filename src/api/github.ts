@@ -1,4 +1,5 @@
 import { GitHubError } from "./errors"
+import { recordRateLimit } from "./rateLimit"
 import type { GitHubContentEntry, GitHubRepo, RateLimit } from "./types"
 
 const API_BASE = "https://api.github.com"
@@ -34,6 +35,10 @@ async function request(url: string, accept: string): Promise<Response> {
       undefined,
     )
   }
+
+  // Record before branching: the headers on a failure are the ones that
+  // say how long the wait is.
+  recordRateLimit(response.headers)
 
   if (response.ok) return response
 

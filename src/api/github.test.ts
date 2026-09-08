@@ -153,3 +153,25 @@ describe("fetchRateLimit", () => {
     expect(limit.reset.getTime()).toBe(1700000000 * 1000)
   })
 })
+
+describe("rate limit recording", () => {
+  it("records the budget from a failed response too", async () => {
+    const { getRateLimit, resetRateLimit } = await import("./rateLimit")
+    resetRateLimit()
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        fail(403, {
+          "x-ratelimit-limit": "60",
+          "x-ratelimit-remaining": "0",
+          "x-ratelimit-reset": "1700000000",
+        }),
+      ),
+    )
+
+    await expect(fetchRepos("octocat")).rejects.toMatchObject({
+      kind: "rate-limited",
+    })
+    expect(getRateLimit()?.remaining).toBe(0)
+  })
+})
