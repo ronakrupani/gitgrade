@@ -1,9 +1,12 @@
 import { useState } from "react"
 import Header from "./components/Header"
+import RepoList from "./components/RepoList"
 import SearchBar from "./components/SearchBar"
+import { useRepos } from "./hooks/useRepos"
 
 export default function App() {
   const [username, setUsername] = useState<string | null>(null)
+  const repos = useRepos(username)
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -24,9 +27,9 @@ export default function App() {
           </div>
         </section>
 
-        {/* The repo list renders here in item 6, the account grade in item 28. */}
+        {/* Scores land on these cards in item 24, the account grade in item 28. */}
         <section aria-label="Results" id="results">
-          {username && <p className="text-muted">Grading {username}</p>}
+          <RepoList state={repos} />
         </section>
       </main>
     </div>
