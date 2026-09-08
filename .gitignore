@@ -31,3 +31,4 @@ dist-ssr
 # Test output
 coverage
 .claude/
+.vercel
