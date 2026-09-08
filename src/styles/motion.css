@@ -1,0 +1,321 @@
+/*
+ * Landing page motion.
+ *
+ * The hero is an orbit: the thirteen rules of the rubric circle the input,
+ * because that is literally what the product does to whatever username you
+ * type into the middle.
+ *
+ * Colour comes only from the tokens in tokens.css. Where a translucent
+ * version of a token is needed, it is mixed from that token with
+ * color-mix rather than written as a new hex value.
+ *
+ * Every animation in this file is switched off under
+ * prefers-reduced-motion. The layout does not depend on any of them.
+ */
+
+/* Registering the radius makes it a real length, so it can be transitioned
+   when the orbit pulls inward on submit. It has to inherit: the chips are
+   grandchildren of the ring and position themselves from it. */
+@property --orbit-r {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@keyframes gg-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gg-breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes gg-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gg-shimmer {
+  to {
+    background-position: 200% center;
+  }
+}
+
+/* ---------- backdrop ---------- */
+
+.gg-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* A faint rule grid. Depth from a 1px line, not a shadow. */
+.gg-grid {
+  position: absolute;
+  inset: -2px;
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.35;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 38%, #000 0%, transparent 78%);
+}
+
+/* The accent bloom behind the input. The only place the accent is used
+   large, which is what keeps it from competing with the button. */
+.gg-bloom {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: min(1100px, 130vw);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--accent) 16%, transparent) 0%,
+    color-mix(in oklab, var(--accent) 5%, transparent) 38%,
+    transparent 68%
+  );
+  animation: gg-breathe 9s ease-in-out infinite;
+}
+
+/* ---------- orbits ---------- */
+
+.gg-orbit-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Chips fade out toward the edges rather than being sliced off by the
+     overflow clip. */
+  mask-image: radial-gradient(
+    ellipse 62% 62% at 50% 50%,
+    #000 55%,
+    transparent 92%
+  );
+}
+
+/* Each ring group is a zero-size point at the centre of the field, so the
+   rings inside it centre on the input rather than on the page flow. */
+.gg-orbit-group {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+
+.gg-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: calc(var(--orbit-r) * 2);
+  height: calc(var(--orbit-r) * 2);
+  border-radius: 50%;
+  border: 1px solid color-mix(in oklab, var(--accent) 14%, var(--border));
+  transition: --orbit-r 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gg-ring--dashed {
+  border-style: dashed;
+  border-color: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+/* The radar sweep. A conic gradient clipped to an annulus, so it reads as
+   something scanning the ring rather than a spinning pie. */
+.gg-sweep {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: calc(var(--orbit-r) * 2);
+  height: calc(var(--orbit-r) * 2);
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    color-mix(in oklab, var(--accent) 40%, transparent) 44deg,
+    transparent 90deg
+  );
+  mask: radial-gradient(
+    circle,
+    transparent calc(var(--orbit-r) - 2px),
+    #000 calc(var(--orbit-r) - 1px)
+  );
+  animation: gg-spin var(--sweep-dur, 14s) linear infinite;
+  transition: --orbit-r 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gg-orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: calc(var(--orbit-r) * 2);
+  height: calc(var(--orbit-r) * 2);
+  animation: gg-spin var(--dur) linear infinite;
+  animation-direction: var(--dir, normal);
+  transition: --orbit-r 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Three nested rotations cancel out so the label stays upright: the ring
+   spins, the slot places the chip on the circle, and the chip spins back. */
+.gg-slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: rotate(var(--a)) translateX(var(--orbit-r));
+}
+
+.gg-slot-fix {
+  transform: rotate(calc(-1 * var(--a)));
+}
+
+.gg-chip {
+  display: block;
+  translate: -50% -50%;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--border));
+  background-color: color-mix(in oklab, var(--surface-raised) 92%, transparent);
+  color: var(--text);
+  padding: 0.35rem 0.8rem;
+  font-size: 0.78rem;
+  backdrop-filter: blur(6px);
+  animation: gg-spin var(--dur) linear infinite;
+  animation-direction: var(--dir-reverse, reverse);
+  pointer-events: auto;
+  transition:
+    border-color 200ms ease,
+    color 200ms ease;
+}
+
+/* Hovering any chip stops the whole system, so a rule can be read. */
+.gg-orbit-field:has(.gg-chip:hover) .gg-orbit,
+.gg-orbit-field:has(.gg-chip:hover) .gg-chip,
+.gg-orbit-field:has(.gg-chip:hover) .gg-sweep {
+  animation-play-state: paused;
+}
+
+.gg-chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.gg-chip-weight {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  margin-left: 0.4rem;
+}
+
+/* While a scan is running the rings tighten and the sweep speeds up. */
+.gg-scanning .gg-orbit,
+.gg-scanning .gg-ring,
+.gg-scanning .gg-sweep {
+  --orbit-r: var(--orbit-r-tight);
+}
+
+.gg-scanning .gg-sweep {
+  animation-duration: 2.2s;
+}
+
+/* ---------- entrances ---------- */
+
+.gg-rise {
+  animation: gg-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.gg-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 600ms ease,
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gg-reveal[data-visible="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------- headline ---------- */
+
+.gg-headline {
+  background-image: linear-gradient(
+    100deg,
+    var(--text) 20%,
+    var(--accent) 40%,
+    var(--accent-hover) 50%,
+    var(--text) 70%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: gg-shimmer 6s linear infinite;
+}
+
+/* ---------- the input card ---------- */
+
+.gg-console {
+  position: relative;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background-color: color-mix(in oklab, var(--surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  transition:
+    border-color 250ms ease,
+    transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gg-console:focus-within {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gg-bloom,
+  .gg-orbit,
+  .gg-chip,
+  .gg-sweep,
+  .gg-headline {
+    animation: none !important;
+  }
+
+  .gg-rise {
+    animation: none;
+    opacity: 1;
+  }
+
+  .gg-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .gg-console {
+    transition: none;
+  }
+}
