@@ -1,6 +1,7 @@
 import { hasDescription } from "./has-description"
 import { hasTopics } from "./has-topics"
 import { readmeExists } from "./readme-exists"
+import { readmeSubstantial } from "./readme-substantial"
 import type { Check } from "./types"
 
 export type { Check, CheckResult, RepoContext } from "./types"
@@ -12,4 +13,4 @@ export type { Check, CheckResult, RepoContext } from "./types"
  * Adding a check means one new file and one line here. Nothing else in the
  * codebase changes. Do not collapse these into a switch statement.
  */
-export const checks: Check[] = [hasDescription, hasTopics, readmeExists]
+export const checks: Check[] = [hasDescription, hasTopics, readmeExists, readmeSubstantial]
