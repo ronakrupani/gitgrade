@@ -1,6 +1,7 @@
 import { hasDescription } from "./has-description"
 import { hasLicense } from "./has-license"
 import { hasTopics } from "./has-topics"
+import { noPlaceholderText } from "./no-placeholder-text"
 import { readmeExists } from "./readme-exists"
 import { readmeHasImage } from "./readme-has-image"
 import { readmeHasRunSteps } from "./readme-has-run-steps"
@@ -24,4 +25,5 @@ export const checks: Check[] = [
   readmeHasImage,
   readmeHasRunSteps,
   hasLicense,
+  noPlaceholderText,
 ]
