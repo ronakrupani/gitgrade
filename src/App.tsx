@@ -67,11 +67,19 @@ export default function App() {
           </div>
         </section>
 
-        {/* Scores land on these cards in item 24, the account grade in item 28. */}
+        {/*
+          Scores land on these cards in item 24, the account grade in item 28.
+
+          The bottom padding only applies once there is a list to sit above.
+          Idle renders nothing here and hands the page to HowItWorks, which
+          brings its own pb-32, so padding both would double the gap.
+        */}
         <section
           aria-label="Results"
           id="results"
-          className="relative z-10 mx-auto w-full max-w-3xl px-6"
+          className={`relative z-10 mx-auto w-full max-w-3xl px-6 ${
+            repos.status === "idle" ? "" : "pb-32"
+          }`}
         >
           <RepoList state={repos} />
         </section>
