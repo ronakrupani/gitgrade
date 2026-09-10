@@ -2,6 +2,7 @@ import { hasDescription } from "./has-description"
 import { hasTopics } from "./has-topics"
 import { readmeExists } from "./readme-exists"
 import { readmeHasImage } from "./readme-has-image"
+import { readmeHasRunSteps } from "./readme-has-run-steps"
 import { readmeSubstantial } from "./readme-substantial"
 import type { Check } from "./types"
 
@@ -20,4 +21,5 @@ export const checks: Check[] = [
   readmeExists,
   readmeSubstantial,
   readmeHasImage,
+  readmeHasRunSteps,
 ]
