@@ -88,3 +88,27 @@ export function scoreAccount(repos: RepoScore[]): AccountScore {
 
   return { score, grade: gradeFor(score), repos }
 }
+
+/**
+ * Outcomes split three ways and ordered for reading.
+ *
+ * Failures come first and heaviest first, because the report is a work
+ * queue: the fix worth the most points should be the first line you see.
+ * Ties break on title so the order is stable between renders and between
+ * repos. Not-applicable checks go last, and quietly, since there is
+ * nothing to do about them.
+ */
+export function partitionOutcomes(outcomes: CheckOutcome[]): {
+  failed: CheckOutcome[]
+  passed: CheckOutcome[]
+  notApplicable: CheckOutcome[]
+} {
+  const byPointsLost = (a: CheckOutcome, b: CheckOutcome) =>
+    b.check.weight - a.check.weight || a.check.title.localeCompare(b.check.title)
+
+  return {
+    failed: outcomes.filter((o) => o.result === "fail").sort(byPointsLost),
+    passed: outcomes.filter((o) => o.result === "pass").sort(byPointsLost),
+    notApplicable: outcomes.filter((o) => o.result === "na"),
+  }
+}

@@ -1,4 +1,10 @@
-import { gradeFor, scoreAccount, scoreRepo } from "./scoring"
+import {
+  gradeFor,
+  partitionOutcomes,
+  scoreAccount,
+  scoreRepo,
+  type CheckOutcome,
+} from "./scoring"
 import type { Check, CheckResult, RepoContext } from "./checks"
 import { makeRepo } from "./test/fixtures"
 
@@ -179,5 +185,50 @@ describe("not-applicable checks", () => {
 
     expect(result.possible).toBe(0)
     expect(result.score).toBe(100)
+  })
+})
+
+function partitionCheck(id: string, weight: number, title = id): Check {
+  return { id, title, weight, why: "w", howToFix: "h", run: () => "pass" }
+}
+
+function partitionOutcome(id: string, weight: number, result: CheckResult): CheckOutcome {
+  return { check: partitionCheck(id, weight), result }
+}
+
+describe("partitionOutcomes", () => {
+  it("puts failures first, heaviest first", () => {
+    const { failed } = partitionOutcomes([
+      partitionOutcome("small", 2, "fail"),
+      partitionOutcome("big", 15, "fail"),
+      partitionOutcome("mid", 8, "fail"),
+    ])
+    expect(failed.map((o) => o.check.id)).toEqual(["big", "mid", "small"])
+  })
+
+  it("breaks weight ties on title so the order is stable", () => {
+    const { failed } = partitionOutcomes([
+      { check: partitionCheck("z", 10, "Zeta"), result: "fail" },
+      { check: partitionCheck("a", 10, "Alpha"), result: "fail" },
+    ])
+    expect(failed.map((o) => o.check.id)).toEqual(["a", "z"])
+  })
+
+  it("separates pass, fail and na", () => {
+    const parts = partitionOutcomes([
+      partitionOutcome("p", 5, "pass"),
+      partitionOutcome("f", 5, "fail"),
+      partitionOutcome("n", 5, "na"),
+    ])
+    expect(parts.passed.map((o) => o.check.id)).toEqual(["p"])
+    expect(parts.failed.map((o) => o.check.id)).toEqual(["f"])
+    expect(parts.notApplicable.map((o) => o.check.id)).toEqual(["n"])
+  })
+
+  it("does not mutate the input", () => {
+    const input = [partitionOutcome("a", 1, "fail"), partitionOutcome("b", 9, "fail")]
+    const before = input.map((o) => o.check.id)
+    partitionOutcomes(input)
+    expect(input.map((o) => o.check.id)).toEqual(before)
   })
 })
