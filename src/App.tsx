@@ -5,12 +5,16 @@ import OrbitField from "./components/OrbitField"
 import RepoList from "./components/RepoList"
 import SearchBar from "./components/SearchBar"
 import { useRepos } from "./hooks/useRepos"
+import { useScores } from "./hooks/useScores"
 
 export default function App() {
   const [username, setUsername] = useState<string | null>(null)
   const repos = useRepos(username)
+  // Straight out of state, so the reference is stable and the scan runs
+  // once per repo list rather than once per render.
+  const scores = useScores(repos.status === "loaded" ? repos.repos : null)
 
-  const scanning = repos.status === "loading"
+  const scanning = repos.status === "loading" || scores.status === "scoring"
 
   return (
     <div className="relative min-h-screen bg-bg text-text">
@@ -68,7 +72,7 @@ export default function App() {
         </section>
 
         {/*
-          Scores land on these cards in item 24, the account grade in item 28.
+          The account grade goes above these cards in item 28.
 
           The bottom padding only applies once there is a list to sit above.
           Idle renders nothing here and hands the page to HowItWorks, which
@@ -81,7 +85,7 @@ export default function App() {
             repos.status === "idle" ? "" : "pb-32"
           }`}
         >
-          <RepoList state={repos} />
+          <RepoList state={repos} scores={scores} />
         </section>
 
         {repos.status === "idle" && <HowItWorks />}

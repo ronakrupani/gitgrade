@@ -37,3 +37,44 @@ describe("RepoCard", () => {
     expect(screen.getByText("never pushed")).toBeInTheDocument()
   })
 })
+
+describe("RepoCard with a score", () => {
+  it("renders without a ring or report card until it has a score", () => {
+    render(<RepoCard repo={makeRepo()} />)
+    expect(screen.queryByRole("img", { name: /Score/ })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("To fix")).not.toBeInTheDocument()
+  })
+
+  it("shows the ring and the report card once scored", () => {
+    const repo = makeRepo({ name: "gitgrade" })
+    render(
+      <RepoCard
+        repo={repo}
+        score={{
+          repo,
+          outcomes: [
+            {
+              check: {
+                id: "has-description",
+                title: "Has a description",
+                weight: 12,
+                why: "w",
+                howToFix: "h",
+                run: () => "fail",
+              },
+              result: "fail",
+            },
+          ],
+          earned: 0,
+          possible: 12,
+          score: 0,
+          grade: "F",
+        }}
+      />,
+    )
+    expect(
+      screen.getByRole("img", { name: "Score 0 out of 100, grade F" }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText("To fix")).toHaveTextContent("Has a description")
+  })
+})
