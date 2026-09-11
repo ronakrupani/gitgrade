@@ -9,5 +9,9 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    // Off by default, which turns every CSS import into an empty string.
+    // ScoreRing's test reads motion.css to check for class collisions with
+    // the orbit, and needs the real file.
+    css: true,
   },
 })

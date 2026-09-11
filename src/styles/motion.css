@@ -295,10 +295,12 @@
   transform: translateY(-2px);
 }
 
-/* Score ring. The fill sweeps in from empty on first paint and eases when
-   the score changes. The final position does not depend on the transition,
-   so switching it off under reduced motion loses nothing but the sweep. */
-.gg-ring {
+/* Score ring fill. Not .gg-ring: that is the orbit above, and it carries a
+   translate that would drag this circle off centre. The fill sweeps in
+   from empty on first paint and eases when the score changes. The final
+   position does not depend on the transition, so switching it off under
+   reduced motion loses nothing but the sweep. */
+.gg-score-fill {
   transition: stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -323,7 +325,7 @@
   }
 
   .gg-console,
-  .gg-ring {
+  .gg-score-fill {
     transition: none;
   }
 }
