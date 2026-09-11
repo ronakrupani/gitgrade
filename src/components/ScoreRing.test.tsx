@@ -1,5 +1,12 @@
 import { render, screen } from "@testing-library/react"
 import ScoreRing from "./ScoreRing"
+import motionCss from "../styles/motion.css?raw"
+
+/** Class names the orbit on the landing page owns in motion.css. */
+function orbitClasses(): Set<string> {
+  const orbit = motionCss.slice(0, motionCss.indexOf("Score ring fill"))
+  return new Set([...orbit.matchAll(/\.(gg-[a-z-]+)/g)].map((m) => m[1]))
+}
 
 describe("ScoreRing", () => {
   it("describes itself to assistive tech in one sentence", () => {
@@ -71,5 +78,21 @@ describe("ScoreRing", () => {
     const svg = container.querySelector("svg")
     expect(svg).toHaveAttribute("width", "64")
     expect(svg).toHaveAttribute("height", "64")
+  })
+
+  it("shares no class name with the orbit on the landing page", () => {
+    // jsdom applies no CSS, so a collision like this renders fine in every
+    // test and breaks in the browser. The fill circle once used .gg-ring,
+    // which the orbit positions with a translate, and it ended up drawn
+    // from the corner of the svg and clipped to a quarter arc.
+    const { container } = render(<ScoreRing score={63} grade="C" />)
+    const owned = orbitClasses()
+    expect(owned.has("gg-ring")).toBe(true) // the guard is only useful if this holds
+
+    for (const el of container.querySelectorAll("[class]")) {
+      for (const cls of el.classList) {
+        expect(owned, `${cls} is an orbit class`).not.toContain(cls)
+      }
+    }
   })
 })

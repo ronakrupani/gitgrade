@@ -59,7 +59,7 @@ export default function ScoreRing({
             cy={size / 2}
             r={radius}
             fill="none"
-            className="gg-ring stroke-accent"
+            className="gg-score-fill stroke-accent"
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={circumference}
