@@ -1,4 +1,5 @@
 import { hasDescription } from "./has-description"
+import { hasHomepage } from "./has-homepage"
 import { hasLicense } from "./has-license"
 import { hasTopics } from "./has-topics"
 import { noPlaceholderText } from "./no-placeholder-text"
@@ -28,4 +29,5 @@ export const checks: Check[] = [
   hasLicense,
   noPlaceholderText,
   notEmptyFork,
+  hasHomepage,
 ]
