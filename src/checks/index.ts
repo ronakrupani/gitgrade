@@ -1,4 +1,5 @@
 import { hasDescription } from "./has-description"
+import { hasGitignore } from "./has-gitignore"
 import { hasHomepage } from "./has-homepage"
 import { hasLicense } from "./has-license"
 import { hasTopics } from "./has-topics"
@@ -32,4 +33,5 @@ export const checks: Check[] = [
   notEmptyFork,
   hasHomepage,
   recentlyUpdated,
+  hasGitignore,
 ]
