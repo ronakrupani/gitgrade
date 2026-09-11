@@ -8,6 +8,7 @@ import { readmeExists } from "./readme-exists"
 import { readmeHasImage } from "./readme-has-image"
 import { readmeHasRunSteps } from "./readme-has-run-steps"
 import { readmeSubstantial } from "./readme-substantial"
+import { recentlyUpdated } from "./recently-updated"
 import type { Check } from "./types"
 
 export type { Check, CheckResult, RepoContext } from "./types"
@@ -30,4 +31,5 @@ export const checks: Check[] = [
   noPlaceholderText,
   notEmptyFork,
   hasHomepage,
+  recentlyUpdated,
 ]
