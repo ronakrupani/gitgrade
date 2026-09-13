@@ -1,3 +1,4 @@
+import { isFresh, readCache, writeCache, type CacheEntry } from "./cache"
 import { GitHubError } from "./errors"
 import { recordRateLimit } from "./rateLimit"
 import type { GitHubContentEntry, GitHubRepo, RateLimit } from "./types"
@@ -24,11 +25,35 @@ function isRateLimited(response: Response): boolean {
   return response.headers.get("x-ratelimit-remaining") === "0"
 }
 
-async function request(url: string, accept: string): Promise<Response> {
+/** A Response rebuilt from the cache. Carries no rate limit headers on purpose. */
+function fromCache(entry: CacheEntry): Response {
+  return new Response(entry.body, {
+    status: entry.status,
+    headers: entry.contentType ? { "Content-Type": entry.contentType } : {},
+  })
+}
+
+/** Whether a response is worth keeping: a real answer, including "no such README". */
+function cacheable(response: Response): boolean {
+  return response.ok || response.status === 404
+}
+
+/** The response for a URL: from cache when fresh, from GitHub otherwise. */
+async function fetchOrCached(
+  url: string,
+  accept: string,
+  useCache: boolean,
+): Promise<Response> {
+  const cached = useCache ? readCache(url) : null
+  if (cached && isFresh(cached)) return fromCache(cached)
+
   let response: Response
   try {
     response = await fetch(url, { headers: headers(accept) })
   } catch {
+    // Offline. A stale answer beats no answer: the repo list from an hour
+    // ago is still the repo list.
+    if (cached) return fromCache(cached)
     throw new GitHubError(
       "network",
       "Could not reach GitHub. Check your connection.",
@@ -39,6 +64,36 @@ async function request(url: string, accept: string): Promise<Response> {
   // Record before branching: the headers on a failure are the ones that
   // say how long the wait is.
   recordRateLimit(response.headers)
+
+  if (isRateLimited(response) && cached) {
+    // Out of budget. Serve what we have and say nothing; the status in
+    // the header already shows the limit is used up.
+    return fromCache(cached)
+  }
+
+  if (useCache && cacheable(response)) {
+    const body = await response.text()
+    const entry: CacheEntry = {
+      status: response.status,
+      contentType: response.headers.get("Content-Type"),
+      body,
+      storedAt: Date.now(),
+    }
+    writeCache(url, entry)
+    // The body has been read, so hand back a fresh Response with the
+    // original headers rather than the drained one.
+    return new Response(body, { status: response.status, headers: response.headers })
+  }
+
+  return response
+}
+
+async function request(
+  url: string,
+  accept: string,
+  useCache = true,
+): Promise<Response> {
+  const response = await fetchOrCached(url, accept, useCache)
 
   if (response.ok) return response
 
@@ -59,8 +114,8 @@ async function request(url: string, accept: string): Promise<Response> {
   )
 }
 
-async function requestJson<T>(url: string): Promise<T> {
-  const response = await request(url, "application/vnd.github+json")
+async function requestJson<T>(url: string, useCache = true): Promise<T> {
+  const response = await request(url, "application/vnd.github+json", useCache)
   return (await response.json()) as T
 }
 
@@ -125,7 +180,7 @@ export async function fetchReleaseCount(
 export async function fetchRateLimit(): Promise<RateLimit> {
   const body = await requestJson<{
     resources: { core: { limit: number; remaining: number; reset: number } }
-  }>(`${API_BASE}/rate_limit`)
+  }>(`${API_BASE}/rate_limit`, false)
   const core = body.resources.core
   return {
     limit: core.limit,
