@@ -1,5 +1,6 @@
-import { loadRepoContext, loadRepoContexts } from "./repoContext"
+import { loadReleaseCounts, loadRepoContext, loadRepoContexts } from "./repoContext"
 import { makeRepo } from "./test/fixtures"
+import type { RepoContext } from "./checks"
 
 function respond(url: string): Response {
   if (url.endsWith("/readme")) {
@@ -133,5 +134,52 @@ describe("loadRepoContexts", () => {
     vi.stubGlobal("fetch", vi.fn())
 
     expect(await loadRepoContexts([])).toEqual([])
+  })
+})
+
+describe("loadReleaseCounts", () => {
+  it("fills in releaseCount for every context, in order, without touching the inputs", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) =>
+        Promise.resolve(
+          new Response(JSON.stringify(url.includes("/with/") ? [{}] : []), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        ),
+      ),
+    )
+    const inputs: RepoContext[] = [
+      { repo: makeRepo({ name: "with" }), readme: null, rootFiles: [] },
+      { repo: makeRepo({ name: "without" }), readme: null, rootFiles: [] },
+    ]
+
+    const result = await loadReleaseCounts(inputs)
+
+    expect(result.map((c) => c.releaseCount)).toEqual([1, 0])
+    expect(result.map((c) => c.repo.name)).toEqual(["with", "without"])
+    expect(inputs[0].releaseCount).toBeUndefined()
+  })
+
+  it("makes one request per context, capped by the concurrency", async () => {
+    let inFlight = 0
+    let peak = 0
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        inFlight++
+        peak = Math.max(peak, inFlight)
+        await new Promise((r) => setTimeout(r, 5))
+        inFlight--
+        return new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } })
+      }),
+    )
+    const inputs = Array.from({ length: 6 }, () => ({ repo: makeRepo(), readme: null, rootFiles: [] }))
+
+    await loadReleaseCounts(inputs, 2)
+
+    expect(peak).toBeLessThanOrEqual(2)
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(6)
   })
 })

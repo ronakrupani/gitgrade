@@ -1,4 +1,4 @@
-import { fetchReadme, fetchRootFiles } from "./api/github"
+import { fetchReadme, fetchReleaseCount, fetchRootFiles } from "./api/github"
 import type { GitHubRepo } from "./api/types"
 import type { RepoContext } from "./checks"
 
@@ -50,4 +50,35 @@ export async function loadRepoContexts(
   await Promise.all(workers)
 
   return contexts
+}
+
+/**
+ * The same contexts with releaseCount filled in, a few at a time. Runs
+ * after first paint, because it costs a request per repo for a two point
+ * check and the page should not wait on it. Returns new objects; the
+ * inputs are not touched.
+ */
+export async function loadReleaseCounts(
+  contexts: RepoContext[],
+  concurrency: number = CONCURRENCY,
+): Promise<RepoContext[]> {
+  const result: RepoContext[] = new Array(contexts.length)
+  let next = 0
+
+  async function worker(): Promise<void> {
+    while (next < contexts.length) {
+      const index = next++
+      const context = contexts[index]
+      const releaseCount = await fetchReleaseCount(
+        context.repo.owner.login,
+        context.repo.name,
+      )
+      result[index] = { ...context, releaseCount }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, contexts.length) }, worker),
+  )
+  return result
 }

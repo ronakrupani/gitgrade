@@ -1,8 +1,20 @@
 import { useEffect, useState } from "react"
 import { GitHubError } from "../api/errors"
+import { getRateLimit } from "../api/rateLimit"
 import type { GitHubRepo } from "../api/types"
-import { loadRepoContexts } from "../repoContext"
+import { loadReleaseCounts, loadRepoContexts } from "../repoContext"
 import { scoreRepo, type RepoScore } from "../scoring"
+
+/**
+ * Whether the release lookup can run without leaving the next scan short.
+ * One request per repo, plus a little headroom, and unknown means go: the
+ * first scan of a session has not seen any headers yet.
+ */
+function canAffordReleases(repoCount: number): boolean {
+  const limit = getRateLimit()
+  if (!limit) return true
+  return limit.remaining >= repoCount + 5
+}
 
 export type ScoresState =
   | { status: "idle" }
@@ -22,7 +34,12 @@ export type ScoresState =
  * Scores come back all at once rather than one card at a time. Two
  * requests per repo go out a few at a time either way, and a list where
  * cards flip from blank to graded in fetch order reads as jitter, not
- * progress. Item 26 puts a skeleton in the gap.
+ * progress.
+ *
+ * The release check is a second pass. It costs a request per repo for two
+ * points, so it runs after the first scores are on screen, and only when
+ * the rate limit can spare it. Until it lands the check is na and the
+ * score is out of 98; when it lands the scores update in place.
  */
 export function useScores(repos: GitHubRepo[] | null): ScoresState {
   const [state, setState] = useState<ScoresState>({ status: "idle" })
@@ -39,9 +56,21 @@ export function useScores(repos: GitHubRepo[] | null): ScoresState {
     setState({ status: "scoring" })
 
     loadRepoContexts(repos)
-      .then((contexts) => {
-        if (current) {
-          setState({ status: "scored", scores: contexts.map((c) => scoreRepo(c)) })
+      .then(async (contexts) => {
+        if (!current) return
+        setState({ status: "scored", scores: contexts.map((c) => scoreRepo(c)) })
+
+        if (!canAffordReleases(contexts.length)) return
+        // Failing here must not take the scores down with it. The page
+        // already has a grade; a lost two point check is not an error the
+        // reader needs to hear about.
+        try {
+          const withReleases = await loadReleaseCounts(contexts)
+          if (current) {
+            setState({ status: "scored", scores: withReleases.map((c) => scoreRepo(c)) })
+          }
+        } catch {
+          /* keep the first pass */
         }
       })
       .catch((error: unknown) => {

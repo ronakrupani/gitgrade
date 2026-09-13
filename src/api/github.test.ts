@@ -2,6 +2,7 @@ import { GitHubError } from "./errors"
 import {
   fetchRateLimit,
   fetchReadme,
+  fetchReleaseCount,
   fetchRepos,
   fetchRootFiles,
 } from "./github"
@@ -173,5 +174,34 @@ describe("rate limit recording", () => {
       kind: "rate-limited",
     })
     expect(getRateLimit()?.remaining).toBe(0)
+  })
+})
+
+describe("fetchReleaseCount", () => {
+  it("asks for a single release, since the check only needs to know if there is one", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(ok([{ tag_name: "v1.0.0" }]))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const count = await fetchReleaseCount("octocat", "example")
+
+    expect(count).toBe(1)
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://api.github.com/repos/octocat/example/releases?per_page=1",
+    )
+  })
+
+  it("reports zero for a repo with no releases", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok([])))
+    expect(await fetchReleaseCount("octocat", "example")).toBe(0)
+  })
+
+  it("lets a rate limit refusal through, so the caller can decide", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(fail(403, { "x-ratelimit-remaining": "0" })),
+    )
+    await expect(fetchReleaseCount("octocat", "example")).rejects.toMatchObject({
+      kind: "rate-limited",
+    })
   })
 })
