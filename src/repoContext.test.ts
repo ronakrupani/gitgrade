@@ -175,7 +175,14 @@ describe("loadReleaseCounts", () => {
         return new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } })
       }),
     )
-    const inputs = Array.from({ length: 6 }, () => ({ repo: makeRepo(), readme: null, rootFiles: [] }))
+    // Distinct names, so distinct URLs. Six repos called "example" would
+    // share one URL and five of them would be cache hits, which is right
+    // but not what this test is measuring.
+    const inputs = Array.from({ length: 6 }, (_, i) => ({
+      repo: makeRepo({ name: `repo-${i}` }),
+      readme: null,
+      rootFiles: [],
+    }))
 
     await loadReleaseCounts(inputs, 2)
 

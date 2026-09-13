@@ -205,3 +205,145 @@ describe("fetchReleaseCount", () => {
     })
   })
 })
+
+describe("the response cache", () => {
+  const REPOS_URL = "https://api.github.com/users/octocat/repos?per_page=100&sort=pushed"
+
+  it("serves a second identical request from cache without touching the network", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(ok([{ name: "one" }]))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await fetchRepos("octocat")
+    const again = await fetchRepos("octocat")
+
+    expect(again).toEqual([{ name: "one" }])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("goes back to the network once the entry is an hour old", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-13T10:00:00Z"))
+    // A fresh Response per call: a body can only be read once.
+    const fetchMock = vi.fn(() => Promise.resolve(ok([{ name: "one" }])))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await fetchRepos("octocat")
+    vi.setSystemTime(new Date("2026-09-13T11:00:00Z"))
+    await fetchRepos("octocat")
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it("caches a missing README, which is an answer that cost a request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(fail(404))
+    vi.stubGlobal("fetch", fetchMock)
+
+    expect(await fetchReadme("octocat", "example")).toBeNull()
+    expect(await fetchReadme("octocat", "example")).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not cache a rate limit refusal or a server error", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(fail(403, { "x-ratelimit-remaining": "0" }))
+      .mockResolvedValueOnce(fail(502))
+      .mockResolvedValueOnce(ok([]))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(fetchRepos("octocat")).rejects.toMatchObject({ kind: "rate-limited" })
+    await expect(fetchRepos("octocat")).rejects.toMatchObject({ kind: "http" })
+    expect(await fetchRepos("octocat")).toEqual([])
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it("serves a stale entry when the rate limit is used up, rather than nothing", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-13T10:00:00Z"))
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ok([{ name: "from-earlier" }]))
+      .mockResolvedValueOnce(fail(403, { "x-ratelimit-remaining": "0" }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await fetchRepos("octocat")
+    vi.setSystemTime(new Date("2026-09-13T12:00:00Z"))
+    const stale = await fetchRepos("octocat")
+
+    expect(stale).toEqual([{ name: "from-earlier" }])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it("serves a stale entry when offline", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-13T10:00:00Z"))
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ok([{ name: "from-earlier" }]))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await fetchRepos("octocat")
+    vi.setSystemTime(new Date("2026-09-13T12:00:00Z"))
+    expect(await fetchRepos("octocat")).toEqual([{ name: "from-earlier" }])
+    vi.useRealTimers()
+  })
+
+  it("still reports a rate limit when there is nothing cached to fall back on", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(fail(403, { "x-ratelimit-remaining": "0" })))
+    await expect(fetchRepos("octocat")).rejects.toMatchObject({ kind: "rate-limited" })
+  })
+
+  it("does not record rate limit headers on a cache hit", async () => {
+    // A cached response says nothing about the budget now. The headers
+    // from the original fetch are recorded once; a hit records nothing.
+    const { getRateLimit, resetRateLimit } = await import("./rateLimit")
+    resetRateLimit()
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("[]", {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "x-ratelimit-remaining": "42",
+          "x-ratelimit-limit": "60",
+          "x-ratelimit-reset": "9999999999",
+        },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    await fetchRepos("octocat")
+    expect(getRateLimit()?.remaining).toBe(42)
+    resetRateLimit()
+    await fetchRepos("octocat")
+    expect(getRateLimit()).toBeNull()
+  })
+
+  it("never caches the rate limit endpoint, which is free and must be live", async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        ok({ resources: { core: { limit: 60, remaining: 10, reset: 1_700_000_000 } } }),
+      ),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    await fetchRateLimit()
+    await fetchRateLimit()
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("keys on the full URL, so two users do not share a repo list", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ok([{ name: "a" }]))
+      .mockResolvedValueOnce(ok([{ name: "b" }]))
+    vi.stubGlobal("fetch", fetchMock)
+
+    expect(await fetchRepos("alice")).toEqual([{ name: "a" }])
+    expect(await fetchRepos("bob")).toEqual([{ name: "b" }])
+    expect(localStorage.getItem(`gitgrade:cache:${REPOS_URL}`)).toBeNull()
+  })
+})
