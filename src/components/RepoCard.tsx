@@ -2,6 +2,7 @@ import type { GitHubRepo } from "../api/types"
 import type { RepoScore } from "../scoring"
 import ReportCard from "./ReportCard"
 import ScoreRing from "./ScoreRing"
+import { ReportSkeleton, RingSkeleton } from "./Skeleton"
 
 /** Formats a timestamp as "Mar 2025". Null pushed_at means never pushed. */
 function formatPushed(pushedAt: string | null): string {
@@ -17,15 +18,20 @@ function formatPushed(pushedAt: string | null): string {
 /**
  * One repo. The score is optional because the repo list arrives one
  * request ahead of the READMEs and root listings that scoring needs, and
- * a card with no grade yet is still worth showing.
+ * a card with no grade yet is still worth showing. While that second
+ * round is in flight, scoring puts a skeleton where the grade will land.
  */
 export default function RepoCard({
   repo,
   score,
+  scoring = false,
 }: {
   repo: GitHubRepo
   score?: RepoScore
+  scoring?: boolean
 }) {
+  const pending = !score && scoring
+
   return (
     <article className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-start justify-between gap-4">
@@ -71,11 +77,17 @@ export default function RepoCard({
             <ScoreRing score={score.score} grade={score.grade} size={72} />
           </div>
         )}
+        {pending && <RingSkeleton />}
       </div>
 
       {score && (
         <div className="mt-4 border-t border-border pt-4">
           <ReportCard score={score} />
+        </div>
+      )}
+      {pending && (
+        <div className="mt-4 border-t border-border pt-4">
+          <ReportSkeleton />
         </div>
       )}
     </article>
