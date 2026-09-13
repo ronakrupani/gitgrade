@@ -192,3 +192,56 @@ describe("RepoList ordering", () => {
     expect(names).toEqual(["first", "second"])
   })
 })
+
+describe("RepoList with controls", () => {
+  const a = makeRepo({ name: "a-top" })
+  const f = makeRepo({ name: "f-bottom", fork: true })
+  const scoredState = {
+    status: "scored" as const,
+    scores: [
+      { repo: a, outcomes: [], earned: 95, possible: 100, score: 95, grade: "A" as const },
+      { repo: f, outcomes: [], earned: 20, possible: 100, score: 20, grade: "F" as const },
+    ],
+  }
+  const loaded = { status: "loaded" as const, archivedCount: 0, repos: [a, f] }
+  const names = () => screen.getAllByRole("article").map((el) => el.querySelector("h3")!.textContent)
+
+  it("flips the order for best first", () => {
+    render(<RepoList state={loaded} scores={scoredState} sort="best" />)
+    expect(names()).toEqual(["a-top", "f-bottom"])
+  })
+
+  it("hides grades that are switched off", () => {
+    render(
+      <RepoList
+        state={loaded}
+        scores={scoredState}
+        filters={{ grades: new Set(["A"]), hideForks: false }}
+      />,
+    )
+    expect(names()).toEqual(["a-top"])
+  })
+
+  it("hides forks when asked", () => {
+    render(
+      <RepoList
+        state={loaded}
+        scores={scoredState}
+        filters={{ grades: new Set(["A", "B", "C", "D", "F"]), hideForks: true }}
+      />,
+    )
+    expect(names()).toEqual(["a-top"])
+  })
+
+  it("says so when the filters hide everything, instead of showing an empty page", () => {
+    render(
+      <RepoList
+        state={loaded}
+        scores={scoredState}
+        filters={{ grades: new Set(), hideForks: false }}
+      />,
+    )
+    expect(screen.getByRole("status")).toHaveTextContent("No repos match these filters.")
+    expect(screen.queryAllByRole("article")).toHaveLength(0)
+  })
+})

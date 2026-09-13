@@ -23,7 +23,7 @@ export default function AccountSummary({
   const count = scores.length
 
   return (
-    <header
+    <section
       aria-label="Account grade"
       className="flex flex-wrap items-center gap-6 rounded-lg border border-border bg-surface p-6"
     >
@@ -46,6 +46,6 @@ export default function AccountSummary({
           )}
         </p>
       </div>
-    </header>
+    </section>
   )
 }

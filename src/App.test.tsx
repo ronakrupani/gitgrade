@@ -87,7 +87,7 @@ describe("App scoring", () => {
     const rings = await screen.findAllByRole("img", { name: /Score \d+ out of 100/ })
     // Two rings: the account grade at the top and the one repo below it.
     expect(rings).toHaveLength(2)
-    expect(screen.getByRole("banner", { name: "Account grade" })).toHaveTextContent("github.com/octocat")
+    expect(screen.getByRole("region", { name: "Account grade" })).toHaveTextContent("github.com/octocat")
     expect(screen.getByLabelText("To fix")).toBeInTheDocument()
     expect(screen.getByLabelText("Passing")).toHaveTextContent("Has a description")
   })
@@ -117,7 +117,7 @@ describe("App scoring", () => {
     await userEvent.type(screen.getByLabelText("GitHub username"), "octocat")
     await userEvent.click(screen.getByRole("button", { name: "Grade" }))
 
-    await screen.findByRole("banner", { name: "Account grade" })
+    await screen.findByRole("region", { name: "Account grade" })
     expect(screen.getAllByRole("article")).toHaveLength(1)
     expect(screen.queryByRole("link", { name: "old" })).not.toBeInTheDocument()
     expect(screen.getByText(/1 archived repo not counted\./)).toBeInTheDocument()
@@ -144,5 +144,62 @@ describe("App unknown username", () => {
       "No GitHub account called octocatt.",
     )
     expect(screen.queryAllByRole("article")).toHaveLength(0)
+  })
+})
+
+describe("App sort and filter", () => {
+  function stubTwoRepos() {
+    const good = makeRepo({ id: 1, name: "good", description: "Has one", topics: ["x"] })
+    const bad = makeRepo({ id: 2, name: "bad" })
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.endsWith("/readme")) {
+          const body = url.includes("/good/") ? "# good\n\n" + "x".repeat(500) : null
+          return Promise.resolve(new Response(body, { status: body ? 200 : 404 }))
+        }
+        if (url.endsWith("/contents/")) {
+          return Promise.resolve(
+            new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } }),
+          )
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify([good, bad]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        )
+      }),
+    )
+  }
+
+  const names = () => screen.getAllByRole("article").map((el) => el.querySelector("h3")!.textContent)
+
+  it("ranks worst first by default and flips on request, without moving the account grade", async () => {
+    stubTwoRepos()
+    render(<App />)
+    await userEvent.type(screen.getByLabelText("GitHub username"), "octocat")
+    await userEvent.click(screen.getByRole("button", { name: "Grade" }))
+    await screen.findByRole("region", { name: "Account grade" })
+
+    expect(names()).toEqual(["bad", "good"])
+    const accountBefore = screen.getByRole("region", { name: "Account grade" }).textContent
+
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Sort" }), "best")
+    expect(names()).toEqual(["good", "bad"])
+    expect(screen.getByRole("region", { name: "Account grade" }).textContent).toBe(accountBefore)
+  })
+
+  it("filters by grade and reports the count", async () => {
+    stubTwoRepos()
+    render(<App />)
+    await userEvent.type(screen.getByLabelText("GitHub username"), "octocat")
+    await userEvent.click(screen.getByRole("button", { name: "Grade" }))
+    await screen.findByRole("region", { name: "Account grade" })
+
+    // "bad" has no README and nothing else, so it is an F. Turn F off.
+    await userEvent.click(screen.getByRole("button", { name: "Grade F" }))
+    expect(names()).toEqual(["good"])
+    expect(screen.getByText("1 of 2 repos")).toBeInTheDocument()
   })
 })
