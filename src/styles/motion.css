@@ -240,6 +240,24 @@
   animation-duration: 2.2s;
 }
 
+/* ---------- skeletons ---------- */
+
+/* A slow breathe rather than a sweeping shimmer. The sweep reads as
+   activity on a light theme; on near black it reads as a glitch. */
+@keyframes gg-skeleton {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.gg-skeleton {
+  animation: gg-skeleton 1.6s ease-in-out infinite;
+}
+
 /* ---------- entrances ---------- */
 
 .gg-rise {
@@ -309,7 +327,8 @@
   .gg-orbit,
   .gg-chip,
   .gg-sweep,
-  .gg-headline {
+  .gg-headline,
+  .gg-skeleton {
     animation: none !important;
   }
 

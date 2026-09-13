@@ -82,3 +82,47 @@ describe("RepoList with scores", () => {
     expect(screen.getByRole("article")).toHaveTextContent("one")
   })
 })
+
+describe("RepoList loading states", () => {
+  it("shows skeleton cards and announces loading while the repo list is in flight", () => {
+    render(<RepoList state={{ status: "loading" }} />)
+    const status = screen.getByRole("status")
+    expect(status).toHaveTextContent("Loading repos")
+    expect(screen.getAllByTestId("skeleton").length).toBeGreaterThan(0)
+    // Skeletons are not cards. A count of articles must not include them.
+    expect(screen.queryAllByRole("article")).toHaveLength(0)
+  })
+
+  it("keeps the real cards and puts a skeleton where each grade will land while scoring", () => {
+    render(
+      <RepoList
+        state={{ status: "loaded", repos: [makeRepo({ name: "one" })] }}
+        scores={{ status: "scoring" }}
+      />,
+    )
+    expect(screen.getByRole("article")).toHaveTextContent("one")
+    expect(screen.getByRole("status")).toHaveTextContent("Scoring repos")
+    expect(screen.getAllByTestId("skeleton").length).toBeGreaterThan(0)
+    expect(screen.queryByRole("img", { name: /Score/ })).not.toBeInTheDocument()
+  })
+
+  it("shows no skeletons once the scores are in", () => {
+    const one = makeRepo({ name: "one" })
+    render(
+      <RepoList
+        state={{ status: "loaded", repos: [one] }}
+        scores={{
+          status: "scored",
+          scores: [{ repo: one, outcomes: [], earned: 0, possible: 0, score: 100, grade: "A" }],
+        }}
+      />,
+    )
+    expect(screen.queryAllByTestId("skeleton")).toHaveLength(0)
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+  })
+
+  it("shows no skeleton before scoring has started", () => {
+    render(<RepoList state={{ status: "loaded", repos: [makeRepo()] }} scores={{ status: "idle" }} />)
+    expect(screen.queryAllByTestId("skeleton")).toHaveLength(0)
+  })
+})

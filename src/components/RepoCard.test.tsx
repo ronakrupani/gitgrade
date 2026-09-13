@@ -78,3 +78,29 @@ describe("RepoCard with a score", () => {
     expect(screen.getByLabelText("To fix")).toHaveTextContent("Has a description")
   })
 })
+
+describe("RepoCard while scoring", () => {
+  it("shows a skeleton ring and report while the grade is pending", () => {
+    render(<RepoCard repo={makeRepo()} scoring />)
+    expect(screen.getAllByTestId("skeleton").length).toBeGreaterThan(0)
+    expect(screen.queryByRole("img", { name: /Score/ })).not.toBeInTheDocument()
+  })
+
+  it("shows no skeleton when it has neither a score nor a scan in flight", () => {
+    render(<RepoCard repo={makeRepo()} />)
+    expect(screen.queryAllByTestId("skeleton")).toHaveLength(0)
+  })
+
+  it("prefers the real score over the skeleton if both are present", () => {
+    const repo = makeRepo()
+    render(
+      <RepoCard
+        repo={repo}
+        scoring
+        score={{ repo, outcomes: [], earned: 0, possible: 0, score: 100, grade: "A" }}
+      />,
+    )
+    expect(screen.queryAllByTestId("skeleton")).toHaveLength(0)
+    expect(screen.getByRole("img", { name: /Score 100/ })).toBeInTheDocument()
+  })
+})
