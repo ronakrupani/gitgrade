@@ -84,9 +84,43 @@ describe("App scoring", () => {
 
     // The ring only appears after the second round of requests, so its
     // presence proves the whole pipeline ran: list, contexts, engine, UI.
-    expect(await screen.findByRole("img", { name: /Score \d+ out of 100/ })).toBeInTheDocument()
+    const rings = await screen.findAllByRole("img", { name: /Score \d+ out of 100/ })
+    // Two rings: the account grade at the top and the one repo below it.
+    expect(rings).toHaveLength(2)
+    expect(screen.getByRole("banner", { name: "Account grade" })).toHaveTextContent("github.com/octocat")
     expect(screen.getByLabelText("To fix")).toBeInTheDocument()
     expect(screen.getByLabelText("Passing")).toHaveTextContent("Has a description")
+  })
+
+  it("leaves archived repos out of the list and the average, and says so", async () => {
+    const live = makeRepo({ id: 1, name: "live", description: "Kept" })
+    const archived = makeRepo({ id: 2, name: "old", archived: true })
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.endsWith("/readme")) return Promise.resolve(new Response("# x", { status: 200 }))
+        if (url.endsWith("/contents/")) {
+          return Promise.resolve(
+            new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } }),
+          )
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify([live, archived]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        )
+      }),
+    )
+
+    render(<App />)
+    await userEvent.type(screen.getByLabelText("GitHub username"), "octocat")
+    await userEvent.click(screen.getByRole("button", { name: "Grade" }))
+
+    await screen.findByRole("banner", { name: "Account grade" })
+    expect(screen.getAllByRole("article")).toHaveLength(1)
+    expect(screen.queryByRole("link", { name: "old" })).not.toBeInTheDocument()
+    expect(screen.getByText(/1 archived repo not counted\./)).toBeInTheDocument()
   })
 })
 

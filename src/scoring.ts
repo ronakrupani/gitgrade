@@ -112,3 +112,15 @@ export function partitionOutcomes(outcomes: CheckOutcome[]): {
     notApplicable: outcomes.filter((o) => o.result === "na"),
   }
 }
+
+/**
+ * Repos in the order the account view shows them: lowest score first,
+ * ties broken by name so the order is stable. Worst first is deliberate.
+ * The page is a work queue, and the repo that costs the most is the one
+ * to open first.
+ */
+export function rankWorstFirst(scores: RepoScore[]): RepoScore[] {
+  return [...scores].sort(
+    (a, b) => a.score - b.score || a.repo.name.localeCompare(b.repo.name),
+  )
+}

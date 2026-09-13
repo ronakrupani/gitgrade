@@ -14,6 +14,7 @@ describe("RepoList", () => {
       <RepoList
         state={{
           status: "loaded",
+          archivedCount: 0,
           repos: [makeRepo({ name: "one" }), makeRepo({ name: "two" })],
         }}
       />,
@@ -23,7 +24,7 @@ describe("RepoList", () => {
   })
 
   it("says when an account has no public repos", () => {
-    render(<RepoList state={{ status: "loaded", repos: [] }} />)
+    render(<RepoList state={{ status: "loaded", archivedCount: 0, repos: [] }} />)
 
     expect(
       screen.getByText("This account has no public repos."),
@@ -50,7 +51,7 @@ describe("RepoList with scores", () => {
     const two = makeRepo({ name: "two" })
     render(
       <RepoList
-        state={{ status: "loaded", repos: [one, two] }}
+        state={{ status: "loaded", archivedCount: 0, repos: [one, two] }}
         scores={{
           status: "scored",
           scores: [
@@ -59,11 +60,13 @@ describe("RepoList with scores", () => {
         }}
       />,
     )
-    // Only "two" was scored, so only "two" gets a ring.
+    // Only "two" was scored, so only "two" gets a ring, and "one" is still
+    // on the page rather than silently dropped.
     expect(screen.getAllByRole("img", { name: /Score/ })).toHaveLength(1)
     const cards = screen.getAllByRole("article")
-    expect(cards[1]).toHaveTextContent("two")
-    expect(cards[1]).toContainElement(
+    expect(cards).toHaveLength(2)
+    const twoCard = cards.find((card) => card.querySelector("h3")?.textContent === "two")!
+    expect(twoCard).toContainElement(
       screen.getByRole("img", { name: "Score 100 out of 100, grade A" }),
     )
   })
@@ -71,7 +74,7 @@ describe("RepoList with scores", () => {
   it("keeps the cards and reports the problem when scoring fails", () => {
     render(
       <RepoList
-        state={{ status: "loaded", repos: [makeRepo({ name: "one" })] }}
+        state={{ status: "loaded", archivedCount: 0, repos: [makeRepo({ name: "one" })] }}
         scores={{
           status: "error",
           error: new GitHubError("rate-limited", "Out of requests."),
@@ -98,7 +101,7 @@ describe("RepoList loading states", () => {
   it("keeps the real cards and puts a skeleton where each grade will land while scoring", () => {
     render(
       <RepoList
-        state={{ status: "loaded", repos: [makeRepo({ name: "one" })] }}
+        state={{ status: "loaded", archivedCount: 0, repos: [makeRepo({ name: "one" })] }}
         scores={{ status: "scoring" }}
       />,
     )
@@ -112,7 +115,7 @@ describe("RepoList loading states", () => {
     const one = makeRepo({ name: "one" })
     render(
       <RepoList
-        state={{ status: "loaded", repos: [one] }}
+        state={{ status: "loaded", archivedCount: 0, repos: [one] }}
         scores={{
           status: "scored",
           scores: [{ repo: one, outcomes: [], earned: 0, possible: 0, score: 100, grade: "A" }],
@@ -124,7 +127,7 @@ describe("RepoList loading states", () => {
   })
 
   it("shows no skeleton before scoring has started", () => {
-    render(<RepoList state={{ status: "loaded", repos: [makeRepo()] }} scores={{ status: "idle" }} />)
+    render(<RepoList state={{ status: "loaded", archivedCount: 0, repos: [makeRepo()] }} scores={{ status: "idle" }} />)
     expect(screen.queryAllByTestId("skeleton")).toHaveLength(0)
   })
 })
@@ -142,7 +145,7 @@ describe("RepoList error and empty states", () => {
   })
 
   it("explains an empty account without a fix, since there is nothing to fix", () => {
-    render(<RepoList state={{ status: "loaded", repos: [] }} />)
+    render(<RepoList state={{ status: "loaded", archivedCount: 0, repos: [] }} />)
     const notice = screen.getByRole("status")
     expect(notice).toHaveTextContent("This account has no public repos.")
     expect(notice).toHaveTextContent(/Nothing to grade/)
@@ -153,5 +156,39 @@ describe("RepoList error and empty states", () => {
       <RepoList state={{ status: "error", error: new GitHubError("network", "x") }} />,
     )
     expect(container.innerHTML).not.toMatch(/text-fail|bg-fail/)
+  })
+})
+
+describe("RepoList ordering", () => {
+  it("ranks cards worst first once every score is in", () => {
+    const good = makeRepo({ name: "good" })
+    const bad = makeRepo({ name: "bad" })
+    const mid = makeRepo({ name: "mid" })
+    const scored = (repo: typeof good, score: number) => ({
+      repo, outcomes: [], earned: score, possible: 100, score, grade: "A" as const,
+    })
+    render(
+      <RepoList
+        state={{ status: "loaded", archivedCount: 0, repos: [good, bad, mid] }}
+        scores={{ status: "scored", scores: [scored(good, 95), scored(bad, 20), scored(mid, 60)] }}
+      />,
+    )
+    const names = screen.getAllByRole("article").map((a) => a.querySelector("h3")!.textContent)
+    expect(names).toEqual(["bad", "mid", "good"])
+  })
+
+  it("keeps GitHub's order while scores are still loading, so nothing reshuffles under the reader", () => {
+    render(
+      <RepoList
+        state={{
+          status: "loaded",
+          archivedCount: 0,
+          repos: [makeRepo({ name: "first" }), makeRepo({ name: "second" })],
+        }}
+        scores={{ status: "scoring" }}
+      />,
+    )
+    const names = screen.getAllByRole("article").map((a) => a.querySelector("h3")!.textContent)
+    expect(names).toEqual(["first", "second"])
   })
 })

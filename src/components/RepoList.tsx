@@ -1,6 +1,6 @@
 import type { ReposState } from "../hooks/useRepos"
 import type { ScoresState } from "../hooks/useScores"
-import type { RepoScore } from "../scoring"
+import { rankWorstFirst, type RepoScore } from "../scoring"
 import ErrorState, { Notice } from "./ErrorState"
 import RepoCard from "./RepoCard"
 import { RepoCardSkeleton } from "./Skeleton"
@@ -54,6 +54,19 @@ export default function RepoList({
 
   const byId = scoresById(scores)
 
+  // Worst first once every score is in. Until then the cards keep the
+  // order GitHub sent, most recently pushed first, so nothing reshuffles
+  // under the reader while the skeletons are still up. A repo that somehow
+  // has no score is not dropped; it trails the ranked ones in its
+  // original place.
+  const ordered =
+    scores.status === "scored"
+      ? [
+          ...rankWorstFirst(scores.scores).map((score) => score.repo),
+          ...state.repos.filter((repo) => !byId.has(repo.id)),
+        ]
+      : state.repos
+
   return (
     <div className="grid gap-3">
       {scores.status === "error" && (
@@ -64,7 +77,7 @@ export default function RepoList({
           Scoring repos
         </p>
       )}
-      {state.repos.map((repo) => (
+      {ordered.map((repo) => (
         <RepoCard
           key={repo.id}
           repo={repo}
