@@ -1,5 +1,6 @@
 import { useState } from "react"
 import Header from "./components/Header"
+import AccountSummary from "./components/AccountSummary"
 import HowItWorks from "./components/HowItWorks"
 import OrbitField from "./components/OrbitField"
 import RepoList from "./components/RepoList"
@@ -72,8 +73,6 @@ export default function App() {
         </section>
 
         {/*
-          The account grade goes above these cards in item 28.
-
           The bottom padding only applies once there is a list to sit above.
           Idle renders nothing here and hands the page to HowItWorks, which
           brings its own pb-32, so padding both would double the gap.
@@ -85,6 +84,18 @@ export default function App() {
             repos.status === "idle" ? "" : "pb-32"
           }`}
         >
+          {username !== null &&
+            repos.status === "loaded" &&
+            scores.status === "scored" &&
+            scores.scores.length > 0 && (
+              <div className="mb-6">
+                <AccountSummary
+                  username={username}
+                  scores={scores.scores}
+                  archivedCount={repos.archivedCount}
+                />
+              </div>
+            )}
           <RepoList state={repos} scores={scores} username={username ?? undefined} />
         </section>
 

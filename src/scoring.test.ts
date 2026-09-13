@@ -1,9 +1,11 @@
 import {
   gradeFor,
   partitionOutcomes,
+  rankWorstFirst,
   scoreAccount,
   scoreRepo,
   type CheckOutcome,
+  type RepoScore,
 } from "./scoring"
 import type { Check, CheckResult, RepoContext } from "./checks"
 import { makeRepo } from "./test/fixtures"
@@ -230,5 +232,34 @@ describe("partitionOutcomes", () => {
     const before = input.map((o) => o.check.id)
     partitionOutcomes(input)
     expect(input.map((o) => o.check.id)).toEqual(before)
+  })
+})
+
+describe("rankWorstFirst", () => {
+  function scored(name: string, score: number): RepoScore {
+    return {
+      repo: makeRepo({ name }),
+      outcomes: [],
+      earned: score,
+      possible: 100,
+      score,
+      grade: gradeFor(score),
+    }
+  }
+
+  it("puts the lowest score first", () => {
+    const ranked = rankWorstFirst([scored("b", 90), scored("a", 40), scored("c", 65)])
+    expect(ranked.map((s) => s.repo.name)).toEqual(["a", "c", "b"])
+  })
+
+  it("breaks ties on name so the order is stable", () => {
+    const ranked = rankWorstFirst([scored("zeta", 50), scored("alpha", 50)])
+    expect(ranked.map((s) => s.repo.name)).toEqual(["alpha", "zeta"])
+  })
+
+  it("does not mutate the input", () => {
+    const input = [scored("b", 90), scored("a", 40)]
+    rankWorstFirst(input)
+    expect(input.map((s) => s.repo.name)).toEqual(["b", "a"])
   })
 })
