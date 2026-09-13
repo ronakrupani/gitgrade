@@ -47,6 +47,6 @@ describe("AccountSummary", () => {
 
   it("is a landmark a screen reader can jump to", () => {
     render(<AccountSummary username="octocat" scores={[scored("a", 90)]} />)
-    expect(screen.getByRole("banner", { name: "Account grade" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Account grade" })).toBeInTheDocument()
   })
 })

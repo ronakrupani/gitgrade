@@ -1,12 +1,20 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Header from "./components/Header"
 import AccountSummary from "./components/AccountSummary"
 import HowItWorks from "./components/HowItWorks"
+import ListControls from "./components/ListControls"
 import OrbitField from "./components/OrbitField"
 import RepoList from "./components/RepoList"
 import SearchBar from "./components/SearchBar"
 import { useRepos } from "./hooks/useRepos"
 import { useScores } from "./hooks/useScores"
+import {
+  applyControls,
+  DEFAULT_FILTERS,
+  DEFAULT_SORT,
+  type Filters,
+  type SortKey,
+} from "./listControls"
 
 export default function App() {
   const [username, setUsername] = useState<string | null>(null)
@@ -15,7 +23,19 @@ export default function App() {
   // once per repo list rather than once per render.
   const scores = useScores(repos.status === "loaded" ? repos.repos : null)
 
+  const [sort, setSort] = useState<SortKey>(DEFAULT_SORT)
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
+
   const scanning = repos.status === "loading" || scores.status === "scoring"
+
+  const scored = scores.status === "scored" ? scores.scores : null
+  // Only for the "4 of 13 repos" count. RepoList runs the same function
+  // on the same inputs, and both are cheap enough that sharing the result
+  // would be a bigger change than the duplication.
+  const shown = useMemo(
+    () => (scored ? applyControls(scored, sort, filters).length : 0),
+    [scored, sort, filters],
+  )
 
   return (
     <div className="relative min-h-screen bg-bg text-text">
@@ -88,15 +108,29 @@ export default function App() {
             repos.status === "loaded" &&
             scores.status === "scored" &&
             scores.scores.length > 0 && (
-              <div className="mb-6">
+              <div className="mb-6 grid gap-4">
                 <AccountSummary
                   username={username}
                   scores={scores.scores}
                   archivedCount={repos.archivedCount}
                 />
+                <ListControls
+                  sort={sort}
+                  filters={filters}
+                  onSortChange={setSort}
+                  onFiltersChange={setFilters}
+                  shown={shown}
+                  total={scores.scores.length}
+                />
               </div>
             )}
-          <RepoList state={repos} scores={scores} username={username ?? undefined} />
+          <RepoList
+            state={repos}
+            scores={scores}
+            username={username ?? undefined}
+            sort={sort}
+            filters={filters}
+          />
         </section>
 
         {repos.status === "idle" && <HowItWorks />}
