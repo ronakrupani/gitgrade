@@ -107,6 +107,20 @@ export async function fetchRootFiles(
   }
 }
 
+/**
+ * Whether the repo has any releases, as a count of 0 or 1. The check only
+ * asks "at least one", so the request fetches a single release rather than
+ * paging through all of them, and the number reported is the number seen.
+ */
+export async function fetchReleaseCount(
+  owner: string,
+  repo: string,
+): Promise<number> {
+  const url = `${API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases?per_page=1`
+  const releases = await requestJson<unknown[]>(url)
+  return releases.length
+}
+
 /** The current budget. This endpoint does not spend any of it. */
 export async function fetchRateLimit(): Promise<RateLimit> {
   const body = await requestJson<{
