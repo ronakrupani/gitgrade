@@ -6,6 +6,7 @@ import ListControls from "./components/ListControls"
 import OrbitField from "./components/OrbitField"
 import RepoList from "./components/RepoList"
 import SearchBar from "./components/SearchBar"
+import TokenField from "./components/TokenField"
 import { useRepos } from "./hooks/useRepos"
 import { useScores } from "./hooks/useScores"
 import {
@@ -89,6 +90,13 @@ export default function App() {
             >
               Read only. No login, and nothing is ever written to your repos.
             </p>
+
+            <div
+              className="gg-rise mt-3"
+              style={{ "--delay": "400ms" } as React.CSSProperties}
+            >
+              <TokenField />
+            </div>
           </div>
         </section>
 
