@@ -1,3 +1,5 @@
+import RateLimitStatus from "./RateLimitStatus"
+
 export default function Header() {
   return (
     <header className="border-b border-border">
@@ -8,8 +10,7 @@ export default function Header() {
         >
           GitGrade
         </a>
-        {/* Rate limit status lands here in item 32. */}
-        <div id="header-status" className="text-xs text-muted" />
+        <RateLimitStatus />
       </div>
     </header>
   )

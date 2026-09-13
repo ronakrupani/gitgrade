@@ -34,13 +34,17 @@ describe("App results area", () => {
 
 describe("App search", () => {
   it("fetches and renders the repos for the submitted username", async () => {
+    // A fresh Response per call: the header asks /rate_limit on mount and
+    // a body can only be read once.
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify([makeRepo({ name: "gitgrade" })]), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify([makeRepo({ name: "gitgrade" })]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        ),
       ),
     )
 
