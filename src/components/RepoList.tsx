@@ -1,6 +1,7 @@
 import type { ReposState } from "../hooks/useRepos"
 import type { ScoresState } from "../hooks/useScores"
 import type { RepoScore } from "../scoring"
+import ErrorState, { Notice } from "./ErrorState"
 import RepoCard from "./RepoCard"
 import { RepoCardSkeleton } from "./Skeleton"
 
@@ -16,9 +17,12 @@ function scoresById(scores: ScoresState): Map<number, RepoScore> {
 export default function RepoList({
   state,
   scores = { status: "idle" },
+  username,
 }: {
   state: ReposState
   scores?: ScoresState
+  /** Named in the not-found message, so the typo is visible. */
+  username?: string
 }) {
   if (state.status === "idle") return null
 
@@ -37,11 +41,15 @@ export default function RepoList({
   }
 
   if (state.status === "error") {
-    return <p className="text-fail">{state.error.message}</p>
+    return <ErrorState error={state.error} username={username} />
   }
 
   if (state.repos.length === 0) {
-    return <p className="text-muted">This account has no public repos.</p>
+    return (
+      <Notice title="This account has no public repos.">
+        Nothing to grade. Public repos show up here as soon as they exist.
+      </Notice>
+    )
   }
 
   const byId = scoresById(scores)
@@ -49,7 +57,7 @@ export default function RepoList({
   return (
     <div className="grid gap-3">
       {scores.status === "error" && (
-        <p className="text-fail">{scores.error.message}</p>
+        <ErrorState error={scores.error} username={username} />
       )}
       {scores.status === "scoring" && (
         <p role="status" aria-live="polite" className="sr-only">

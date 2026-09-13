@@ -78,7 +78,9 @@ describe("RepoList with scores", () => {
         }}
       />,
     )
-    expect(screen.getByText("Out of requests.")).toBeInTheDocument()
+    // The words come from the kind, not the raw message. Rate-limited gets
+    // the rate limit explanation whatever the client's message said.
+    expect(screen.getByRole("alert")).toHaveTextContent("GitHub's rate limit is used up.")
     expect(screen.getByRole("article")).toHaveTextContent("one")
   })
 })
@@ -124,5 +126,32 @@ describe("RepoList loading states", () => {
   it("shows no skeleton before scoring has started", () => {
     render(<RepoList state={{ status: "loaded", repos: [makeRepo()] }} scores={{ status: "idle" }} />)
     expect(screen.queryAllByTestId("skeleton")).toHaveLength(0)
+  })
+})
+
+describe("RepoList error and empty states", () => {
+  it("names the username when the account does not exist", () => {
+    render(
+      <RepoList
+        state={{ status: "error", error: new GitHubError("not-found", "Not found on GitHub.", 404) }}
+        username="octocatt"
+      />,
+    )
+    expect(screen.getByRole("alert")).toHaveTextContent("No GitHub account called octocatt.")
+    expect(screen.queryAllByRole("article")).toHaveLength(0)
+  })
+
+  it("explains an empty account without a fix, since there is nothing to fix", () => {
+    render(<RepoList state={{ status: "loaded", repos: [] }} />)
+    const notice = screen.getByRole("status")
+    expect(notice).toHaveTextContent("This account has no public repos.")
+    expect(notice).toHaveTextContent(/Nothing to grade/)
+  })
+
+  it("uses no status colour for errors", () => {
+    const { container } = render(
+      <RepoList state={{ status: "error", error: new GitHubError("network", "x") }} />,
+    )
+    expect(container.innerHTML).not.toMatch(/text-fail|bg-fail/)
   })
 })

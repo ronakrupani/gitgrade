@@ -85,7 +85,7 @@ export default function App() {
             repos.status === "idle" ? "" : "pb-32"
           }`}
         >
-          <RepoList state={repos} scores={scores} />
+          <RepoList state={repos} scores={scores} username={username ?? undefined} />
         </section>
 
         {repos.status === "idle" && <HowItWorks />}

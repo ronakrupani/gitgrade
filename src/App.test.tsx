@@ -89,3 +89,26 @@ describe("App scoring", () => {
     expect(screen.getByLabelText("Passing")).toHaveTextContent("Has a description")
   })
 })
+
+describe("App unknown username", () => {
+  it("says the account does not exist and names what was typed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ message: "Not Found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    )
+
+    render(<App />)
+    await userEvent.type(screen.getByLabelText("GitHub username"), "octocatt")
+    await userEvent.click(screen.getByRole("button", { name: "Grade" }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No GitHub account called octocatt.",
+    )
+    expect(screen.queryAllByRole("article")).toHaveLength(0)
+  })
+})
