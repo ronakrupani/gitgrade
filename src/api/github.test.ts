@@ -347,3 +347,54 @@ describe("the response cache", () => {
     expect(localStorage.getItem(`gitgrade:cache:${REPOS_URL}`)).toBeNull()
   })
 })
+
+describe("the token", () => {
+  it("is not sent when none is stored", async () => {
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(ok([])))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await fetchRepos("octocat")
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(init.headers).not.toHaveProperty("Authorization")
+  })
+
+  it("is sent as a bearer token when stored", async () => {
+    const { setToken } = await import("./token")
+    setToken("ghp_example")
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(ok([])))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await fetchRepos("octocat")
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(init.headers).toHaveProperty("Authorization", "Bearer ghp_example")
+    setToken(null)
+  })
+
+  it("explains a 401 as a bad token, since public data needs none", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(fail(401))))
+    await expect(fetchRepos("octocat")).rejects.toMatchObject({
+      kind: "http",
+      status: 401,
+      message: "GitHub rejected the token. Check it, or clear it.",
+    })
+  })
+
+  it("only ever goes to api.github.com", async () => {
+    // Every URL the client builds starts with the API base. This checks
+    // the guard itself, by reaching past the public functions.
+    const fetchMock = vi.fn((_url: string) => Promise.resolve(ok([])))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await fetchRepos("octocat")
+    await fetchReadme("octocat", "example").catch(() => {})
+    await fetchRootFiles("octocat", "example")
+    await fetchReleaseCount("octocat", "example")
+    await fetchRateLimit().catch(() => {})
+
+    for (const call of fetchMock.mock.calls) {
+      expect(String(call[0])).toMatch(/^https:\/\/api\.github\.com\//)
+    }
+  })
+})

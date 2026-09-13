@@ -1,6 +1,7 @@
 import { isFresh, readCache, writeCache, type CacheEntry } from "./cache"
 import { GitHubError } from "./errors"
 import { recordRateLimit } from "./rateLimit"
+import { getToken } from "./token"
 import type { GitHubContentEntry, GitHubRepo, RateLimit } from "./types"
 
 const API_BASE = "https://api.github.com"
@@ -9,10 +10,16 @@ const API_BASE = "https://api.github.com"
 const PER_PAGE = 100
 
 function headers(accept: string): HeadersInit {
-  return {
+  const base: Record<string, string> = {
     Accept: accept,
     "X-GitHub-Api-Version": "2022-11-28",
   }
+  // The visitor's own token, from their own localStorage. It raises the
+  // limit from 60 an hour to 5000. It goes to api.github.com and nowhere
+  // else; fetchOrCached refuses any other host.
+  const token = getToken()
+  if (token) base.Authorization = `Bearer ${token}`
+  return base
 }
 
 /**
@@ -44,6 +51,13 @@ async function fetchOrCached(
   accept: string,
   useCache: boolean,
 ): Promise<Response> {
+  // Belt and braces. Every URL in this file is built from API_BASE, so
+  // this cannot fire today; it is here so that if someone adds a call to
+  // another host, the token does not go with it.
+  if (!url.startsWith(`${API_BASE}/`)) {
+    throw new Error(`Refusing to send a request outside ${API_BASE}: ${url}`)
+  }
+
   const cached = useCache ? readCache(url) : null
   if (cached && isFresh(cached)) return fromCache(cached)
 
@@ -106,6 +120,10 @@ async function request(
   }
   if (response.status === 404) {
     throw new GitHubError("not-found", "Not found on GitHub.", 404)
+  }
+  if (response.status === 401) {
+    // Only a bad token produces this. Public data needs no credentials.
+    throw new GitHubError("http", "GitHub rejected the token. Check it, or clear it.", 401)
   }
   throw new GitHubError(
     "http",
