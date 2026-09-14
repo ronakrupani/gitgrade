@@ -3,10 +3,16 @@ import { useState, type FormEvent } from "react"
 interface SearchBarProps {
   onSearch: (username: string) => void
   disabled?: boolean
+  /** What the field starts with, for a page opened from a shared URL. */
+  initialValue?: string
 }
 
-export default function SearchBar({ onSearch, disabled }: SearchBarProps) {
-  const [value, setValue] = useState("")
+export default function SearchBar({
+  onSearch,
+  disabled,
+  initialValue = "",
+}: SearchBarProps) {
+  const [value, setValue] = useState(initialValue)
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
