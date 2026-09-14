@@ -5,4 +5,8 @@ import "@testing-library/jest-dom/vitest"
 // test is never served from cache to the next.
 beforeEach(() => {
   localStorage.clear()
+  // A search writes ?user= into the address bar, and jsdom keeps it
+  // between tests. Every test starts at the root, so a username one test
+  // searched for is never auto-scanned by the next.
+  window.history.replaceState(null, "", "/")
 })

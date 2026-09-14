@@ -207,3 +207,70 @@ describe("App sort and filter", () => {
     expect(screen.getByText("1 of 2 repos")).toBeInTheDocument()
   })
 })
+
+describe("App shareable URL", () => {
+  function stubOneRepo() {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.endsWith("/readme")) return Promise.resolve(new Response("# x", { status: 200 }))
+        if (url.endsWith("/contents/") || url.includes("/releases")) {
+          return Promise.resolve(
+            new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } }),
+          )
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify([makeRepo({ name: "shared" })]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        )
+      }),
+    )
+  }
+
+  it("scans the username in the URL as soon as the page opens", async () => {
+    stubOneRepo()
+    window.history.replaceState(null, "", "/?user=octocat")
+
+    render(<App />)
+
+    expect(await screen.findByRole("link", { name: "shared" })).toBeInTheDocument()
+    expect(screen.getByLabelText("GitHub username")).toHaveValue("octocat")
+    expect(await screen.findByRole("region", { name: "Account grade" })).toHaveTextContent(
+      "github.com/octocat",
+    )
+  })
+
+  it("puts the username in the address bar on search, without adding history", async () => {
+    stubOneRepo()
+    const before = window.history.length
+    render(<App />)
+
+    await userEvent.type(screen.getByLabelText("GitHub username"), "octocat")
+    await userEvent.click(screen.getByRole("button", { name: "Grade" }))
+
+    expect(window.location.search).toBe("?user=octocat")
+    expect(window.history.length).toBe(before)
+  })
+
+  it("does nothing on load when the URL has no username", () => {
+    stubOneRepo()
+    render(<App />)
+    expect(screen.getByLabelText("Results")).toBeEmptyDOMElement()
+    expect(vi.mocked(fetch).mock.calls.map((c) => String(c[0]))).not.toContainEqual(
+      expect.stringContaining("/users/"),
+    )
+  })
+
+  it("follows the URL when the visitor navigates back or forward", async () => {
+    stubOneRepo()
+    render(<App />)
+    expect(screen.getByLabelText("Results")).toBeEmptyDOMElement()
+
+    window.history.replaceState(null, "", "/?user=octocat")
+    window.dispatchEvent(new PopStateEvent("popstate"))
+
+    expect(await screen.findByRole("link", { name: "shared" })).toBeInTheDocument()
+  })
+})

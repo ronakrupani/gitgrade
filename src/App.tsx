@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Header from "./components/Header"
 import AccountSummary from "./components/AccountSummary"
 import HowItWorks from "./components/HowItWorks"
@@ -16,10 +16,32 @@ import {
   type Filters,
   type SortKey,
 } from "./listControls"
+import { readUsername, withUsername } from "./shareUrl"
 
 export default function App() {
-  const [username, setUsername] = useState<string | null>(null)
+  // A page opened from a shared link starts scanning straight away.
+  const [username, setUsername] = useState<string | null>(() =>
+    readUsername(window.location.search),
+  )
   const repos = useRepos(username)
+
+  function search(name: string) {
+    setUsername(name)
+    // replaceState, not pushState: the address bar should hold a link
+    // worth sharing, but Back should leave the site, not step through
+    // every username tried.
+    window.history.replaceState(null, "", withUsername(window.location.href, name))
+  }
+
+  useEffect(() => {
+    // Back and forward across a full navigation still land on a URL with
+    // a username in it, and the page should show that username.
+    function onPopState() {
+      setUsername(readUsername(window.location.search))
+    }
+    window.addEventListener("popstate", onPopState)
+    return () => window.removeEventListener("popstate", onPopState)
+  }, [])
   // Straight out of state, so the reference is stable and the scan runs
   // once per repo list rather than once per render.
   const scores = useScores(repos.status === "loaded" ? repos.repos : null)
@@ -81,7 +103,11 @@ export default function App() {
               className="gg-rise mt-9"
               style={{ "--delay": "240ms" } as React.CSSProperties}
             >
-              <SearchBar onSearch={setUsername} disabled={scanning} />
+              <SearchBar
+                onSearch={search}
+                disabled={scanning}
+                initialValue={username ?? ""}
+              />
             </div>
 
             <p
