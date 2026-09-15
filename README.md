@@ -1,5 +1,7 @@
 # GitGrade
 
+[![CI](https://github.com/ronakrupani/gitgrade/actions/workflows/ci.yml/badge.svg)](https://github.com/ronakrupani/gitgrade/actions/workflows/ci.yml)
+
 See your GitHub the way a recruiter sees it.
 
 GitGrade scores every public repo on an account against a checklist of repo
